@@ -10,36 +10,14 @@
    [clojure.string]
    [http.async.client :as ac])
   (:import
-   (java.util Properties)
    (twitter.callbacks.protocols AsyncStreamingCallback)))
 
-(defn load-config-file
-  "this loads a config file from the classpath"
-  [file-name]
-  (let [file-reader (.. (Thread/currentThread)
-                        (getContextClassLoader)
-                        (getResourceAsStream file-name))
-        props (Properties.)]
-    (.load props file-reader)
-    (into {} props)))
-(def ^:dynamic *config* (load-config-file "creds.config"))
 
-(defn assert-get
-  "get a value from the config, otherwise throw an exception detailing the problem"
-  [key-name]
-  
-  (or (get *config* key-name) 
-      (throw (Exception. (format "please define %s in the resources/test.config file" key-name)))))
-
-(def ^:dynamic *app-consumer-key* (assert-get "app.consumer.key"))
-(def ^:dynamic *app-consumer-secret* (assert-get "app.consumer.secret"))
-(def ^:dynamic *user-access-token* (assert-get "user.access.token"))
-(def ^:dynamic *user-access-token-secret* (assert-get "user.access.token.secret"))
-
-(def my-creds (make-oauth-creds *app-consumer-key*
-                                *app-consumer-secret*
-                                *user-access-token*
-                                *user-access-token-secret*))
+(defn get-credentials [creds-map]
+  (make-oauth-creds (:app-consumer-key creds-map)
+                    (:app-consumer-secret creds-map)
+                    (:user-access-token creds-map)
+                    (:user-access-token-secret creds-map)))
 
 (defn get-error [res-obj]
   (:error res-obj))
@@ -67,7 +45,7 @@
             (f json-str)))
         (catch Exception e (str "Exception:" (.getMessage e)))))))
 
-(defn attach-stream []
+(defn attach-stream [processor-f creds-map]
   (let [resp-promise (promise)
         cb (AsyncStreamingCallback.
             (fn [_resp payload]
@@ -77,15 +55,13 @@
 
     (if (agent-error stream-processor-agent)
       (restart-agent stream-processor-agent (create-empty-queue)))
-
     (agent-watch stream-processor-agent
-                 (partial watcher-fn #((.write *out* (str  %))))
+                 (partial watcher-fn processor-f)
                  :processor)
     (statuses-sample
      ;; :params {:track "storm,bad weather,good weather,rain,sun,sunny,snow,freezing"}
-     :oauth-creds my-creds
-     :callbacks cb)
-    ))
+     :oauth-creds (get-credentials creds-map)
+     :callbacks cb)))
 
 (defn stop-streaming [res-obj]
   ((:cancel (meta res-obj))))

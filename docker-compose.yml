@@ -1,7 +1,7 @@
 stravinski:
   build: .
   ports:
-    - "5555:5555"
+    - "7253:7253"
   volumes:
     - .:/app
   dns:
