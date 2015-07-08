@@ -2,17 +2,14 @@
   (:use
    [twitter.oauth]
    [twitter.callbacks]
-   [twitter.api.restful]
    [twitter.callbacks.handlers]
    [twitter.api.streaming]
    [clojure.java.io :as io])
   (:require
    [cheshire.core]
    [clojure.string]
-   [clojure.data.json :as json]
    [http.async.client :as ac])
   (:import
-   (java.io OutputStream)
    (java.util Properties)
    (twitter.callbacks.protocols AsyncStreamingCallback)))
 
@@ -59,7 +56,7 @@
 (defn response-success-process [payload]
   (send stream-processor-agent conj (str payload)))
 
-(defn watcher-fn [w key agent-ref old-state new-state]
+(defn watcher-fn [f key agent-ref old-state new-state]
   (let [matcher-fn (fn [el] (re-find (re-matcher #"\r\n" el)))]
     (if (not (nil? (matcher-fn (str (last new-state)))))
       (try
@@ -67,29 +64,22 @@
         (let [json-str (cheshire.core/parse-string (clojure.string/join new-state) true)]
           (if (and (:text json-str )
                    ( not (:delete json-str) ))
-            (.write w (clojure.string/join new-state);; (:text json-str)
-                    )))
+            (f json-str)))
         (catch Exception e (str "Exception:" (.getMessage e)))))))
 
 (defn attach-stream []
   (let [resp-promise (promise)
-        w (writer "map.txt")
         cb (AsyncStreamingCallback.
             (fn [_resp payload]
-              (send stream-processor-agent conj (str payload))
-              )
-            (fn [_resp]
-              (.close w)
-              )
-            (fn [_resp ex]
-              (.close w)
-              (.printStackTrace ex)))]
+              (send stream-processor-agent conj (str payload)))
+            (fn [_resp])
+            (fn [_resp ex] (.printStackTrace ex)))]
 
     (if (agent-error stream-processor-agent)
       (restart-agent stream-processor-agent (create-empty-queue)))
 
     (agent-watch stream-processor-agent
-                 (partial watcher-fn w)
+                 (partial watcher-fn #((.write *out* (str  %))))
                  :processor)
     (statuses-sample
      ;; :params {:track "storm,bad weather,good weather,rain,sun,sunny,snow,freezing"}
