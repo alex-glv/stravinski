@@ -12,6 +12,7 @@
   (:import
    (twitter.callbacks.protocols AsyncStreamingCallback)))
 
+(def streamer-obj (atom nil) )
 
 (defn get-credentials [creds-map]
   (make-oauth-creds (:app-consumer-key creds-map)
@@ -19,8 +20,8 @@
                     (:user-access-token creds-map)
                     (:user-access-token-secret creds-map)))
 
-(defn get-error [res-obj]
-  (:error res-obj))
+(defn get-error []
+  (:error @streamer-obj))
 
 (def stream-processor-agent (agent (clojure.lang.PersistentQueue/EMPTY)))
 
@@ -45,6 +46,10 @@
             (f json-str)))
         (catch Exception e (str "Exception:" (.getMessage e)))))))
 
+(defn stop-streaming []
+  ((:cancel (meta @streamer-obj)))
+  (reset! streamer-obj nil))
+
 (defn attach-stream [processor-f creds-map]
   (let [resp-promise (promise)
         cb (AsyncStreamingCallback.
@@ -55,13 +60,15 @@
 
     (if (agent-error stream-processor-agent)
       (restart-agent stream-processor-agent (create-empty-queue)))
+
     (agent-watch stream-processor-agent
                  (partial watcher-fn processor-f)
                  :processor)
-    (statuses-sample
-     ;; :params {:track "storm,bad weather,good weather,rain,sun,sunny,snow,freezing"}
-     :oauth-creds (get-credentials creds-map)
-     :callbacks cb)))
 
-(defn stop-streaming [res-obj]
-  ((:cancel (meta res-obj))))
+    (if (not (nil? @streamer-obj))
+      (stop-streaming))
+
+    (reset! streamer-obj (statuses-sample
+              ;; :params {:track "storm,bad weather,good weather,rain,sun,sunny,snow,freezing"}
+              :oauth-creds (get-credentials creds-map)
+              :callbacks cb))))
