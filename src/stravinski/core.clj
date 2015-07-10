@@ -2,7 +2,7 @@
   (:require [stravinski.streamer :as streamer]
             [riemann.client :as riemann])
   (:import
-   ( java.util Properties ) )
+   ( java.util Properties ))
   (:gen-class))
 
 (defn -main
@@ -57,14 +57,14 @@
                                             :metric (count (:text tweet))
                                             :time (:timestamp_ms tweet)
                                             }))
-
-  )
+  
 
 (defn start-feeding [f]
   (let [creds-map {:app-consumer-key (assert-get "app.consumer.key")
                    :app-consumer-secret (assert-get "app.consumer.secret")
                    :user-access-token (assert-get "user.access.token")
-                   :user-access-token-secret (assert-get "user.access.token.secret")}
+                   :user-access-token-secret (assert-get "user.access.token.secret")
+                   :filter {:track  (assert-get "twitter.filter.track")}}
         processor-fn (partial (fn [f to-deliver-err to-deliver-succ counter tweet]
                                 (try 
                                   (send (var-get counter) inc)

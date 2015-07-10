@@ -68,7 +68,8 @@
     (if (not (nil? @streamer-obj))
       (stop-streaming))
 
-    (reset! streamer-obj (statuses-sample
-              ;; :params {:track "storm,bad weather,good weather,rain,sun,sunny,snow,freezing"}
-              :oauth-creds (get-credentials creds-map)
-              :callbacks cb))))
+    (reset! streamer-obj (statuses-filter
+                          :params {:language "en" ,
+                                   :track (:track (:filter creds-map))}
+                          :oauth-creds (get-credentials creds-map)
+                          :callbacks cb))))
