@@ -32,12 +32,33 @@
   (or (get *config* key-name) 
       (throw (Exception. (format "please define %s in the resources/test.config file" key-name)))))
 
-(def riemann-conn (riemann.client/tcp-client :host (assert-get "riemann.host")))
+(def riemann-conn (atom  (riemann.client/tcp-client :host (assert-get "riemann.host"))))
 
 (defn riemann-submit [tweet]
-  (riemann.client/send-event riemann-conn {:service "tweets"
-                                           :tweet (:text tweet)
-                                           }))
+  (if-let [hashtags (:hashtags (:entities tweet))]
+    (doseq [hashtag hashtags]
+      (riemann.client/send-event @riemann-conn {:service "tweet.hashtag"
+                                                :description (:text hashtag)
+                                                :time (:timestamp_ms tweet)
+                                               })))
+
+  (if-let [followers (:followers_count (:user tweet))]
+    (riemann.client/send-event @riemann-conn {:service "tweet.followers"
+                                              :time (:timestamp_ms tweet)
+                                              :metric followers }))
+
+  (riemann.client/send-event @riemann-conn {:service "tweet.meta"
+                                            :metric (:events_sent tweet)
+                                            :time (:timestamp_ms tweet)
+                                            })
+
+  (riemann.client/send-event @riemann-conn {:service "tweet.text"
+                                            :description (:text tweet)
+                                            :metric (count (:text tweet))
+                                            :time (:timestamp_ms tweet)
+                                            }))
+
+  )
 
 (defn start-feeding [f]
   (let [creds-map {:app-consumer-key (assert-get "app.consumer.key")
@@ -47,7 +68,7 @@
         processor-fn (partial (fn [f to-deliver-err to-deliver-succ counter tweet]
                                 (try 
                                   (send (var-get counter) inc)
-                                  ((var-get f) tweet)
+                                  ((var-get f) (assoc  tweet :events_sent @(var-get counter)))
                                   (catch Exception e (deliver to-deliver-err (.getMessage e))))
                                 (deliver to-deliver-succ tweet))
                               #'riemann-submit #'errors? #'success? #'stats-agent)]
