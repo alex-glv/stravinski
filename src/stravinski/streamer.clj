@@ -47,7 +47,7 @@
         (catch Exception e (str "Exception:" (.getMessage e)))))))
 
 (defn stop-streaming []
-  (send agent-ref create-empty-queue)
+  (send @stream-processor-agent create-empty-queue)
   ((:cancel (meta @streamer-obj)))
   (reset! streamer-obj nil))
 

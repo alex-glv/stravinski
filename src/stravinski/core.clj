@@ -2,7 +2,7 @@
   (:require [stravinski.streamer :as streamer]
             [riemann.client :as riemann])
   (:import
-   ( java.util Properties ))
+   [ java.util Properties ])
   (:gen-class))
 
 (defn -main
