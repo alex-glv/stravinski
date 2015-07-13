@@ -1,10 +1,11 @@
 (ns stravinski.web
-  (:require [net.cgrand.enlive-html :as html]
+  (:require [net.cgrand.enlive-html :as html :only [defsnippet deftemplate content]]
             [ring.adapter.jetty :as jetty]
             [ring.middleware.params :as params]
             [ring.util.response :as resp]
             [stravinski.core :as core]
-            [stravinski.streamer :as streamer]))
+            [stravinski.streamer :as streamer])
+  (:gen-class))
 
 (defonce ^:dynamic server-instance (atom nil))
 

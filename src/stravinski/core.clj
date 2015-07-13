@@ -27,31 +27,28 @@
   (or (get *config* key-name) 
       (throw (Exception. (format "please define %s in the resources/test.config file" key-name)))))
 
-(def riemann-conn (atom  (riemann.client/tcp-client :host (assert-get "riemann.host"))))
+(def riemann-conn (atom nil))
 
 (defn riemann-submit [tweet]
   (if-let [hashtags (:hashtags (:entities tweet))]
     (doseq [hashtag hashtags]
       (riemann.client/send-event @riemann-conn {:service "tweet.hashtag"
                                                 :description (:text hashtag)
-                                                :time (:timestamp_ms tweet)
                                                })))
 
   (if-let [followers (:followers_count (:user tweet))]
     (riemann.client/send-event @riemann-conn {:service "tweet.followers"
-                                              :time (:timestamp_ms tweet)
                                               :metric followers }))
 
   (riemann.client/send-event @riemann-conn {:service "tweet.meta"
                                             :metric (:events_sent tweet)
-                                            :time (:timestamp_ms tweet)
                                             })
 
   (riemann.client/send-event @riemann-conn {:service "tweet.text"
                                             :description (:text tweet)
                                             :metric (count (:text tweet))
-                                            :time (:timestamp_ms tweet)
-                                            }))
+                                            })
+  )
   
 
 (defn start-feeding [f]
@@ -67,4 +64,6 @@
                                   (catch Exception e (deliver to-deliver-err (.getMessage e))))
                                 (deliver to-deliver-succ tweet))
                               #'riemann-submit #'errors? #'success? #'stats-agent)]
+    (if (nil? @riemann-conn)
+      (reset! riemann-conn (riemann.client/tcp-client :host (str (assert-get "riemann.host")))))
     (f processor-fn creds-map)))
