@@ -5,11 +5,6 @@
    [ java.util Properties ])
   (:gen-class))
 
-(defn -main
-  [& args]
-
-  )
-
 (def stats-agent (agent 0))
 (def errors? (promise))
 (def success? (promise))

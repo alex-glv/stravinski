@@ -8,6 +8,7 @@
 
 (defonce ^:dynamic server-instance (atom nil))
 
+
 (defn start-server [routes]
   (let [out *out*]
     (binding [*out* out]
@@ -28,18 +29,21 @@
   [title overview]
   [:head :title ] (html/content title)
   [:#menu] (html/content  (control))
-  [:#status] (html/content (status overview))
-  )
+  [:#status] (html/content (status overview)))
+
+(def ^:dynamic *start-fn* #(if (nil? @streamer/streamer-obj)
+                             (core/start-feeding streamer/attach-stream)))
+
+(def ^:dynamic *stop-fn* #(if (not (nil? @streamer/streamer-obj))
+                           (streamer/stop-streaming)))
 
 (defn handler [request]
   (if (= (:uri request)
          "/start")
-    (if (nil? @streamer/streamer-obj)
-      (core/start-feeding streamer/attach-stream)))
+    (*start-fn*))
   (if (= (:uri request)
          "/stop")
-    (if (not (nil? @streamer/streamer-obj))
-      (streamer/stop-streaming)))
+    (*stop-fn*))
   (let [overview-map {:total-sent @core/stats-agent
                       :http-status (if (nil? @streamer/streamer-obj)
                                      "Not running"
@@ -49,6 +53,9 @@
                       :started-on (if (nil? @streamer/streamer-obj)
                                     "-"
                                     (:date @(:headers @streamer/streamer-obj)))}]
-    (resp/response (index "Stream control" overview-map)))
-  )
+    (resp/response (index "Stream control" overview-map))))
+
+(defn -main
+  [& args]
+  (start-server #'handler))
 

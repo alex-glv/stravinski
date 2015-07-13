@@ -8,7 +8,7 @@
                  [cheshire "5.5.0"]
                  [ring "1.4.0"]
                  [enlive "1.1.5"]]
-  :main ^:skip-aot stravinski.core
+  :main ^:skip-aot stravinski.web
   :target-path "target/%s"
   :profiles {:user
              {:dependencies [[org.clojure/tools.nrepl "0.2.10"]]
