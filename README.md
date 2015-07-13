@@ -1,32 +1,17 @@
 # stravinski
 
-FIXME: description
+Connects to twitter streaming api and forwards tweet information to Riemann server
 
-## Installation
 
-Download from http://example.com/FIXME.
 
 ## Usage
 
-FIXME: explanation
-
-    $ java -jar stravinski-0.1.0-standalone.jar [args]
+TBA
 
 ## Options
 
-FIXME: listing of options this app accepts.
+TBA
 
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
 
 ## License
 
