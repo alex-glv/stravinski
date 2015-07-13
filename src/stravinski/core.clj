@@ -51,7 +51,7 @@
   )
   
 
-(defn start-feeding [f]
+(defn start-feeding [f track-params]
   (let [creds-map {:app-consumer-key (assert-get "app.consumer.key")
                    :app-consumer-secret (assert-get "app.consumer.secret")
                    :user-access-token (assert-get "user.access.token")
@@ -66,4 +66,4 @@
                               #'riemann-submit #'errors? #'success? #'stats-agent)]
     (if (nil? @riemann-conn)
       (reset! riemann-conn (riemann.client/tcp-client :host (str (assert-get "riemann.host")))))
-    (f processor-fn creds-map)))
+    (f processor-fn creds-map track-params)))

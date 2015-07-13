@@ -3,8 +3,8 @@
             [ring.middleware.params :as params]
             [ring.util.response :as resp]
             [stravinski.core :as core]
-            [ring.middleware.json :only [wrap-json-response]]
             [stravinski.streamer :as streamer])
+  (:use [ring.middleware.json :only [wrap-json-response wrap-json-body]])
   (:gen-class))
 
 (defonce ^:dynamic server-instance (atom nil))
@@ -14,34 +14,41 @@
     (binding [*out* out]
       (if (not (nil? @server-instance))
         (.stop @server-instance))
-      (reset! server-instance  (jetty/run-jetty (params/wrap-params routes) { :port 7705 :join? false }))
+      (reset! server-instance  (jetty/run-jetty (-> routes
+                                                    wrap-json-response 
+                                                    wrap-json-body
+                                                    params/wrap-params)
+                                                { :port 7705 :join? false }))
       server-instance)))
 
 (def ^:dynamic *start-fn* #(if (nil? @streamer/streamer-obj)
-                             (core/start-feeding streamer/attach-stream)))
+                             (core/start-feeding streamer/attach-stream %)))
 
 (def ^:dynamic *stop-fn* #(if (not (nil? @streamer/streamer-obj))
                            (streamer/stop-streaming)))
 
 (defn handler [request]
+  (println request)
+
   (if (= (:uri request)
          "/start")
-    (*start-fn*))
+    (*start-fn* (get-in request [:body "track"])))
   (if (= (:uri request)
          "/stop")
     (*stop-fn*))
   (let [overview-map {:total-sent @core/stats-agent
                       :http-status (if (nil? @streamer/streamer-obj)
-                                     "not-running"
+                                     ""
                                      (str (:code @(:status @streamer/streamer-obj))
                                           "/"
                                           (:msg @(:status @streamer/streamer-obj))))
                       :started-on (if (nil? @streamer/streamer-obj)
-                                    "-"
-                                    (:date @(:headers @streamer/streamer-obj)))}]
+                                    ""
+                                    (:date @(:headers @streamer/streamer-obj)))
+                      :tracking @streamer/params-storage-atom}]
     (resp/response overview-map)))
 
 (defn -main
   [& args]
-  (start-server (ring.middleware.json/wrap-json-response handler)))
+  (start-server handler))
 

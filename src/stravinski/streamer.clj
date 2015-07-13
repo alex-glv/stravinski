@@ -24,6 +24,7 @@
   (:error @streamer-obj))
 
 (def stream-processor-agent (agent (clojure.lang.PersistentQueue/EMPTY)))
+(def params-storage-atom (atom nil))
 
 (defn agent-watch [agent-ref f w-key]
   (remove-watch stream-processor-agent w-key)
@@ -50,7 +51,7 @@
   ((:cancel (meta @streamer-obj)))
   (reset! streamer-obj nil))
 
-(defn attach-stream [processor-f creds-map]
+(defn attach-stream [processor-f creds-map track-params]
   (let [resp-promise (promise)
         cb (AsyncStreamingCallback.
             (fn [_resp payload]
@@ -68,8 +69,13 @@
     (if (not (nil? @streamer-obj))
       (stop-streaming))
 
+    (reset! params-storage-atom (or track-params
+                                   (:track (:filter creds-map))
+                                   ["cats"]))
+
     (reset! streamer-obj (statuses-filter
                           :params {:language "en" ,
-                                   :track (:track (:filter creds-map))}
+                                   :track (or track-params
+                                              (:track (:filter creds-map)))}
                           :oauth-creds (get-credentials creds-map)
                           :callbacks cb))))
