@@ -7,7 +7,8 @@
                  [twitter-api "0.7.8"]
                  [cheshire "5.5.0"]
                  [ring "1.4.0"]
-                 [enlive "1.1.5"]]
+                 [enlive "1.1.5"]
+                 [ring/ring-json "0.3.1"]]
   :uberjar-name "stravinski-standalone-0.0.1.jar"
   :main ^:skip-aot stravinski.web
   :target-path "target/%s"
