@@ -13,6 +13,9 @@
    (twitter.callbacks.protocols AsyncStreamingCallback)))
 
 (def streamer-obj (atom nil) )
+(def stream-processor-agent (agent (clojure.lang.PersistentQueue/EMPTY)))
+(def params-storage-agent (atom nil))
+(def warning-agent (atom nil))
 
 (defn get-credentials [creds-map]
   (make-oauth-creds (:app-consumer-key creds-map)
@@ -22,9 +25,6 @@
 
 (defn get-error []
   (:error @streamer-obj))
-
-(def stream-processor-agent (agent (clojure.lang.PersistentQueue/EMPTY)))
-(def params-storage-atom (atom nil))
 
 (defn agent-watch [agent-ref f w-key]
   (remove-watch stream-processor-agent w-key)
@@ -42,13 +42,17 @@
       (try
         (send agent-ref create-empty-queue)
         (let [json-str (cheshire.core/parse-string (clojure.string/join new-state) true)]
-          (if (and (:text json-str )
+          (when (and (:text json-str )
                    ( not (:delete json-str) ))
-            (f json-str)))
+            (f json-str))
+          (when (:warning json-str)
+            (reset! warning-agent json-str)))
         (catch Exception e (str "Exception:" (.getMessage e)))))))
 
 (defn stop-streaming []
-  ((:cancel (meta @streamer-obj)))
+  (try 
+    ((:cancel (meta @streamer-obj)))
+    (catch Exception e (.getMessage e)))
   (reset! streamer-obj nil))
 
 (defn attach-stream [processor-f creds-map track-params]
@@ -68,14 +72,13 @@
 
     (if (not (nil? @streamer-obj))
       (stop-streaming))
+    (println "Starting with params:" track-params)
 
-    (reset! params-storage-atom (or track-params
-                                   (:track (:filter creds-map))
-                                   ["cats"]))
+    (reset! params-storage-agent track-params)
 
-    (reset! streamer-obj (statuses-filter
-                          :params {:language "en" ,
-                                   :track (or track-params
-                                              (:track (:filter creds-map)))}
-                          :oauth-creds (get-credentials creds-map)
-                          :callbacks cb))))
+    (let [default-params {:stall_warnings true
+                          :ouath-creds (get-credentials creds-map)
+                          :callbacks cb}]
+      (if (empty? track-params)
+        (reset! streamer-obj (statuses-sample :oauth-creds (get-credentials creds-map) :callbacks cb))
+        (reset! streamer-obj (statuses-filter (assoc default-params :params {:language "en" ,:track track-params})))))))

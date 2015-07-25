@@ -45,10 +45,12 @@
                       :started-on (if (nil? @streamer/streamer-obj)
                                     ""
                                     (:date @(:headers @streamer/streamer-obj)))
-                      :tracking @streamer/params-storage-atom}]
+                      :track @streamer/params-storage-agent
+                      :warning @streamer/warning-agent}]
     (resp/response overview-map)))
 
 (defn -main
   [& args]
+  (println "Starting web")
   (start-server handler))
 

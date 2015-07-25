@@ -65,5 +65,6 @@
                                 (deliver to-deliver-succ tweet))
                               #'riemann-submit #'errors? #'success? #'stats-agent)]
     (if (nil? @riemann-conn)
-      (reset! riemann-conn (riemann.client/tcp-client :host (str (assert-get "riemann.host")))))
+      (reset! riemann-conn (riemann.client/tcp-client :host (assert-get "riemann.host")
+                                                      :port (read-string (assert-get "riemann.port")))))
     (f processor-fn creds-map track-params)))
