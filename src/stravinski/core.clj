@@ -1,6 +1,7 @@
 (ns stravinski.core
   (:require [stravinski.streamer :as streamer]
-            [riemann.client :as riemann])
+            [riemann.client :as riemann]
+            [clojure.string :as str])
   (:import
    [ java.util Properties ])
   (:gen-class))
@@ -8,6 +9,29 @@
 (def stats-agent (agent 0))
 (def errors? (promise))
 (def success? (promise))
+
+(defn mappify [mymap]
+  (apply hash-map (interleave (map str (range (count mymap))) mymap)))
+
+(defn dottify-reduce [root-map str-acc]
+  (reduce-kv (fn [init k v]
+               (let [new-str-acc (if (empty? str-acc)
+                                   (name k)
+                                   (str/join "." [str-acc (name k)]))]
+                 (conj init (cond
+                              (map? v) #(dottify-reduce v new-str-acc)
+                              (vector? v) #(dottify-reduce (mappify v) new-str-acc)
+                              :else {(keyword new-str-acc) (str v)})))) [] root-map))
+
+(defn dottify
+  ([root-map] (dottify [] [#(dottify-reduce root-map "")]))
+  ([acc exec-calls]
+   (if (empty? exec-calls)
+     acc
+     (let [new-buckets (mapcat (fn [f] (f)) exec-calls)]
+       (recur (into acc (filter (complement fn?) new-buckets))
+              (filter fn? new-buckets))))))
+
 
 (defn load-config-file
   "this loads a config file from the classpath"
@@ -40,16 +64,17 @@
     (riemann.client/send-event @riemann-conn {:service "tweet.followers"
                                               :metric followers }))
 
-  (riemann.client/send-event @riemann-conn {:service "tweet.meta"
-                                            :metric (:events_sent tweet)
-                                            })
-
-  (riemann.client/send-event @riemann-conn {:service "tweet.text"
-                                            :description (:text tweet)
-                                            :metric (count (:text tweet))
-                                            })
-  )
-  
+  (let [x (apply merge (-> tweet
+                           (assoc :service "tweet.full")
+                           (dissoc :entities)
+                           (dissoc :extended_entities)
+                           dottify
+                           ))
+        lx (if (empty? (:geo.coordinates.0 x))
+             x
+             (assoc x :location (str/join "," [(:geo.coordinates.0 x) (:geo.coordinates.1 x)])))]
+    (riemann.client/send-event @riemann-conn lx))
+)
 
 (defn start-feeding [f track-params]
   (let [creds-map {:app-consumer-key (assert-get "app.consumer.key")
@@ -67,4 +92,5 @@
     (if (nil? @riemann-conn)
       (reset! riemann-conn (riemann.client/tcp-client :host (assert-get "riemann.host")
                                                       :port (read-string (assert-get "riemann.port")))))
-    (f processor-fn creds-map track-params)))
+    (binding [*out* *out*]
+      (f processor-fn creds-map track-params))))
