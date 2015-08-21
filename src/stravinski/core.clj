@@ -49,7 +49,7 @@
   "get a value from the config, otherwise throw an exception detailing the problem"
   [key-name]
   (or (get *config* key-name) 
-      (throw (Exception. (format "please define %s in the resources/test.config file" key-name)))))
+      nil))
 
 (def riemann-conn (atom nil))
 
@@ -77,11 +77,11 @@
 )
 
 (defn start-feeding [f track-params]
-  (let [creds-map {:app-consumer-key (assert-get "app.consumer.key")
-                   :app-consumer-secret (assert-get "app.consumer.secret")
-                   :user-access-token (assert-get "user.access.token")
-                   :user-access-token-secret (assert-get "user.access.token.secret")
-                   :filter {:track  (assert-get "twitter.filter.track")}}
+  (let [creds-map {:app-consumer-key (or (System/getenv "APP_CONS_KEY") (assert-get "app.consumer.key"))
+                   :app-consumer-secret (or (System/getenv "APP_CONS_SECRET") (assert-get "app.consumer.secret"))
+                   :user-access-token (or (System/getenv "APP_ACC_TOKEN") (assert-get "user.access.token"))
+                   :user-access-token-secret (or (System/getenv "APP_ACC_TOKEN_SECRET") (assert-get "user.access.token.secret"))
+                   :filter {:track  (or (System/getenv "FILTER_TRACK") (assert-get "twitter.filter.track"))}}
         processor-fn (partial (fn [f to-deliver-err to-deliver-succ counter tweet]
                                 (try 
                                   (send (var-get counter) inc)
@@ -90,7 +90,7 @@
                                 (deliver to-deliver-succ tweet))
                               #'riemann-submit #'errors? #'success? #'stats-agent)]
     (if (nil? @riemann-conn)
-      (reset! riemann-conn (riemann.client/tcp-client :host (assert-get "riemann.host")
-                                                      :port (read-string (assert-get "riemann.port")))))
+      (reset! riemann-conn (riemann.client/tcp-client :host (or (System/getenv "RIEMANN_HOST") (assert-get "riemann.host"))
+                                                      :port (or (System/getenv "RIEMANN_PORT") (read-string (assert-get "riemann.port"))))))
     (binding [*out* *out*]
       (f processor-fn creds-map track-params))))
