@@ -6,16 +6,16 @@ Connects to twitter streaming api and forwards tweet information to Riemann serv
 ## Usage
 
 Run the docker container with the following env variables:
-APP_CONS_KEY - twitter app consumer key
-APP_CONS_SECRET - twitter app consumer secret
-APP_ACC_TOKEN - twitter app token
-APP_ACC_TOKEN_SECRET - twitter app token secret
+* APP_CONS_KEY - twitter app consumer key
+* APP_CONS_SECRET - twitter app consumer secret
+* APP_ACC_TOKEN - twitter app token
+* APP_ACC_TOKEN_SECRET - twitter app token secret
 
 Container will start webserver on port 7705
 ## Options
 
-GET /start - start streaming tweets to es instance
-GET /stop - stop stream
+* GET /start - start streaming tweets to es instance
+* GET /stop - stop stream
 
 
 ## License
