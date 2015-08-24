@@ -7,4 +7,4 @@ RUN curl https://raw.githubusercontent.com/technomancy/leiningen/b630fa37b8b408c
 -o /usr/local/bin/lein \
 && chmod a+x /usr/local/bin/lein && lein upgrade
 RUN /usr/local/bin/lein uberjar
-CMD ["java", "-cp","target/uberjar/stravinski-standalone-0.0.1.jar","stravinski.web"] 
+CMD ["java", "-cp","target/uberjar/stravinski-standalone-0.0.1.jar"] 
