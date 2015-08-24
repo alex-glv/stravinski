@@ -91,6 +91,6 @@
                               #'riemann-submit #'errors? #'success? #'stats-agent)]
     (if (nil? @riemann-conn)
       (reset! riemann-conn (riemann.client/tcp-client :host (or (System/getenv "RIEMANN_HOST") (assert-get "riemann.host"))
-                                                      :port (or (System/getenv "RIEMANN_PORT") (read-string (assert-get "riemann.port"))))))
+                                                      :port (or (read-string (System/getenv "RIEMANN_PORT")) (read-string (assert-get "riemann.port"))))))
     (binding [*out* *out*]
       (f processor-fn creds-map track-params))))
