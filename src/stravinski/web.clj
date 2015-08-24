@@ -51,6 +51,11 @@
 
 (defn -main
   [& args]
-  (println "Starting web")
+  (println "Opening riemann conn")
+  (try
+   
+    (core/open-rconn)
+    (catch Exception e (.printStackTrace e)))
+  (println "Starting web ")
   (start-server handler))
 
