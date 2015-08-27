@@ -73,8 +73,7 @@
         lx (if (empty? (:geo.coordinates.0 x))
              x
              (assoc x :location (str/join "," [(:geo.coordinates.0 x) (:geo.coordinates.1 x)])))]
-    (riemann.client/send-event @riemann-conn lx))
-)
+    (riemann.client/send-event @riemann-conn lx)))
 
 (defn start-feeding [f track-params]
   (let [creds-map {:app-consumer-key (or (System/getenv "APP_CONS_KEY") (assert-get "app.consumer.key"))
@@ -94,8 +93,9 @@
     (binding [*out* *out*]
       (f processor-fn creds-map track-params))))
 
-(defn open-rconn []
-  (if (nil? @riemann-conn)
-      (reset! riemann-conn (riemann.client/tcp-client :host (or (System/getenv "RIEMANN_HOST") (assert-get "riemann.host"))
-                                                      :port (or (read-string (System/getenv "RIEMANN_PORT")) (read-string (assert-get "riemann.port"))))))
-  )
+(defn open-rconn
+  ([host port]
+   (reset! riemann-conn (riemann.client/tcp-client :host host 
+                                                   :port port)))
+  ([] (open-rconn (or (System/getenv "RIEMANN_HOST") (assert-get "riemann.host"))
+                  (or (read-string (System/getenv "RIEMANN_PORT")) (read-string (assert-get "riemann.port"))))))
